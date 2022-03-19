@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<sub-flow name="get-case-reports" doc:id="7935cf4a-4e29-4114-a363-39028b87d601" >
+		<logger level="INFO" doc:name="Start Log" doc:id="42c44fa8-6ae8-4232-b5d4-4e1a9a9cce88" message='Getting report for #[attributes.queryParams.state default "ALL"]'/>
+		<db:select doc:name="Get Case Reports" doc:id="d84efdf7-4d30-4919-99c6-aa6c9323168f" config-ref="Database_Config1">
+			<db:sql><![CDATA[#["$(vars.dynamicQuery)"]]]></db:sql>
+		</db:select>
+		<logger level="INFO" doc:name="Logger" doc:id="c8464d76-d7f8-44b1-946d-09900cc4a8c3" message="Fetching from DB complete"/>
+	</sub-flow>
+	<sub-flow name="get-cases-by-nationalID" doc:id="6da35b8e-eca6-4e90-a242-dc4a1def3480" >
+		<logger level="INFO" doc:name="Start Log" doc:id="143f5cb2-8b6e-4f29-b731-34d48d8ebc4f" message="Data requested for ID : #[vars.nationalID]"/>
+		<db:select doc:name="Get Cases By ID" doc:id="b55f6789-e205-499e-8005-8c93068b8453" config-ref="Database_Config1">
+			<db:sql><![CDATA[select * from cvd_case_master where national_id = :nationalID]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	"nationalID" : vars.nationalID
+}]]]></db:input-parameters>
+		</db:select>
+		<logger level="INFO" doc:name="Ende Logger" doc:id="03a53dea-a0ed-4045-9fd8-cfc605862589" message="Fetched the required data and moving to Choice."/>
+	</sub-flow>
+	<sub-flow name="update-covid-cases" doc:id="22bc1039-0550-416d-a4f1-689b3d340bec" >
+		<logger level="INFO" doc:name="Start Log" doc:id="d1ca4318-1a04-407d-bf6b-fd01815dfe81" />
+		<db:update doc:name="Update by CaseID" doc:id="3ff6cb86-1efa-4be9-a8be-121f1e568091" config-ref="Database_Config1">
+			<db:sql><![CDATA[update cvd_case_master set source = :source
+, case_type = :case_type
+, first_name = :first_name
+, last_name = :last_name
+, phone = :phone
+, email = :email
+, date_of_birth = TO_DATE(:date_of_birth, 'YYYY-MM-DD')
+, national_id = :national_id
+, national_id_type = :national_id_type
+, street_address = :street_address
+, city = :city
+, state = :state
+, postal = :postal
+, country = :country
+, update_date = TO_DATE(:update_date, 'YYYY-MM-DD')
+, create_by = :create_by 
+, update_by = :update_by where case_id = :case_id]]></db:sql>
+			<db:input-parameters><![CDATA[#[vars.covidCasePayload]]]></db:input-parameters>
+		</db:update>
+		<logger level="INFO" doc:name="End Log" doc:id="70c773de-07f4-47fa-b116-40cf608d4445" message="transacctionId : #[vars.transactionId], correlationId ; #[vars.correlationId], message: Completed Updating the caseid, payload: #[vars.covidCasePayload]"/>
+	</sub-flow>
+	<sub-flow name="create-covid-case" doc:id="73f5f1c5-36f7-4310-b57f-2be0010fc5ed" >
+		<logger level="INFO" doc:name="Start Log" doc:id="2d41df57-531c-47a6-aea2-869e3691b2ae" message="transacctionId : #[vars.transactionId], correlationId ; #[vars.correlationId], message: Started Inserting into DB, payload: #[payload]"/>
+		<db:insert doc:name="Insert Into UHO Db" doc:id="f4f94017-5c26-4729-89da-580da2187f70" config-ref="Database_Config1" queryTimeout="60000" queryTimeoutUnit="MINUTES" autoGenerateKeys="true">
+			<reconnect />
+			<db:sql><![CDATA[insert into cvd_case_master(source, case_type, first_name, last_name, phone, email, date_of_birth, national_id, national_id_type, street_address, city, state, postal, country, create_date, update_date, create_by, update_by) values(:source, :case_type, :first_name, :last_name, :phone, :email, TO_DATE(:date_of_birth, 'YYYY-MM-DD'), :national_id, :national_id_type, :street_address, :city, :state, :postal, :country, TO_DATE(:create_date, 'YYYY-MM-DD'), TO_DATE(:update_date, 'YYYY-MM-DD'), :create_by, :update_by)]]></db:sql>
+			<db:input-parameters><![CDATA[#[payload]]]></db:input-parameters>
+			<db:auto-generated-keys-column-names >
+				<db:auto-generated-keys-column-name value="CASE_ID" />
+			</db:auto-generated-keys-column-names>
+		
+</db:insert>
+		<logger level="INFO" doc:name="End Log" doc:id="936eb0ec-2471-4322-ac16-caa54a3ce761" message="transacctionId : #[vars.transactionId], correlationId ; #[vars.correlationId], message: Completed Inserting into DB"/>
+	</sub-flow>
+</mule>

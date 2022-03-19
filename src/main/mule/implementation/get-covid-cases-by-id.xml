@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="get:\cases\(nationalID):uhub-sapi-config" doc:id="4cf4f7f9-77b4-4a4d-93a9-ccba867b91f0" >
+		<set-variable value="#[attributes.headers.'x-correlation-id' default &quot;&quot;]" doc:name="Set CorrelationId" doc:id="dcbd14b6-d150-4198-adb1-365639082ddf" variableName="correlationId"/>
+		<logger level="INFO" doc:name="Start Log" doc:id="ee389b9e-3d77-4ec5-9f15-1d5fb50dced9" message='transactionID : #[vars.transactionId], correlationID: #[vars.correlationId], message : "Started getting the covid case details by ID"'/>
+		<set-variable value="#[attributes.uriParams.nationalID]" doc:name="Set nationalID" doc:id="0e342dd3-9a95-4023-8449-0f223456b552" variableName="nationalID"/>
+		<flow-ref doc:name="Flow Reference" doc:id="be7375cb-2125-4b9b-989b-312c2298e2a0" name="get-cases-by-nationalID" />
+		<choice doc:name="Choice" doc:id="06c7595f-9577-49c5-b489-d419cb277105" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Set Success Response" doc:id="b07f3de8-190d-4214-888d-701ce6296a2b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (field, index) -> {
+	caseID: field.case_id,
+	source: field.source,
+	first_name: field.first_name,
+	last_name: field.last_name,
+	phone: field.phone,
+	email: field.email,
+	date_of_birth: field.date_of_birth as String {format: 'yyyy-MM-dd'},
+	national_id: field.national_id,
+	national_id_type: field.national_id_type,
+	address: {
+		streetAddress: field.street_address,
+		city: field.city,
+		state: field.state,
+		postal: field.postal,
+		country: field.country
+		},
+	create_date: field.create_date as String {format: 'yyyy-MM-dd'},
+	update_date: field.update_date as String {format: 'yyyy-MM-dd'},
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Set Not Found Response" doc:id="744627aa-b548-4e0c-9555-f65bfb35573f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+   "code":404,
+   "message":"No cases Found",
+   "description":"No cases found for given national id",
+   "dateTime": now() as String {format: "yyyy-MM-dd 'T'HH:mm:ss"},
+   "transactionId": vars.transacationId
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Logger" doc:id="02344eb7-6d49-4c89-a9bb-d2696d2fbb75" message="message: Fetching Complete, payload: #[payload]"/>
+	</flow>
+
+	</mule>
