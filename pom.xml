@@ -65,7 +65,7 @@
 								<properties>
 									<env>test</env>
 									<enc.key>${enc.key}</enc.key>
-									<api.id>17673308</api.id>
+									<api.id>17721492</api.id>
 									<anypoint.platform.client_id>${anypoint.platform.client_id}</anypoint.platform.client_id>
 									<anypoint.platform.client_secret>${anypoint.platform.client_secret}</anypoint.platform.client_secret>
 								</properties>
@@ -211,7 +211,13 @@
 			<version>4.6.4</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
-	</dependencies>
+		<dependency>
+            <groupId>com.mulesoft.connectors</groupId>
+            <artifactId>mule-mongodb-connector</artifactId>
+            <version>6.3.5</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+    </dependencies>
 
 	<repositories>
 		<repository>
