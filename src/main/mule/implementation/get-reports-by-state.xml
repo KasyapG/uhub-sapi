@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <flow name="get:\reports:uhub-sapi-config">
+        <set-variable value="#[attributes.headers.'x-correlation-id' default &quot;&quot;]" doc:name="Set CorrelationId" doc:id="d0d65588-7ee1-446c-b884-10db4aaf7a54" variableName="correlationId" />
+		<logger level="INFO" doc:name="Start Logger" doc:id="f89bbeba-a3e1-4d19-94fa-e86a9c0146ab" message='transactionID : #[vars.transactionId], correlationID: #[vars.correlationId], message : "Started getting the reports by ID"'/>
+		<ee:transform doc:name="Setting Dynamic Query" doc:id="fa034c5d-d6b4-497f-a6aa-23c50842aca9" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="dynamicQuery" ><![CDATA[if(!isEmpty(attributes.queryParams.state)) ("select count(*) as count, case_type, state from cvd_case_master where state = '" ++ upper(attributes.queryParams.state) ++"' group by case_type, state")
+else (
+	"select count(*) as count, case_type, state from cvd_case_master group by case_type, state"
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="eeabb2d2-b74c-401c-a16e-1c4e02c2b714" name="get-case-reports" />
+		<ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:name="Prepare Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+((payload groupBy ($.state) mapObject ((value, key, index) -> 
+{
+	caseReports: {
+    "state" : key,
+    "reports": {
+        "total" : value.count reduce ($ + $$),
+        (value orderBy ($.case_type) map (($.case_type) : $.count)
+        ) 
+    }
+}
+}
+)).*caseReports) default[]]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="e6bb6a49-e340-4f26-a20f-fb9e9d9e0f2b" message="Completed fetching the reports"/>
+    
+</flow>	
+	</mule>
